@@ -4,6 +4,7 @@ import 'pemasukan_screen.dart';
 import 'pengeluaran_screen.dart';
 import 'catatan_screen.dart';
 import 'profil_screen.dart';
+import 'laporan_keuangan.dart';
 
 class DashboardScreen extends StatelessWidget {
   final double anggaran = 5000000;
@@ -92,6 +93,13 @@ class DashboardScreen extends StatelessWidget {
                     label: "Profil",
                     color: Colors.blue.shade100,
                     destination: ProfilScreen(),
+                  ),
+                  _buildMenuCard(
+                    context,
+                    icon: LucideIcons.book,
+                    label: "Laporan",
+                    color: const Color.fromARGB(255, 192, 251, 187),
+                    destination: CatatanKeuanganPage(),
                   ),
                 ],
               ),
