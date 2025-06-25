@@ -7,12 +7,12 @@ import 'profil_screen.dart';
 import 'laporan_keuangan.dart';
 
 class DashboardScreen extends StatelessWidget {
-  final double anggaran = 5000000;
+  final double pemasukan = 5000000;
   final double pengeluaran = 2100000;
 
   @override
   Widget build(BuildContext context) {
-    double sisa = anggaran - pengeluaran;
+    double sisa = pemasukan - pengeluaran;
 
     return Scaffold(
       appBar: AppBar(title: Text("Hai, aku!"), backgroundColor: Colors.teal),
@@ -25,8 +25,8 @@ class DashboardScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildInfoCard(
-                  "Anggaran",
-                  anggaran,
+                  "pemasukan",
+                  pemasukan,
                   Colors.teal.shade100,
                   Colors.teal,
                 ),
@@ -99,7 +99,7 @@ class DashboardScreen extends StatelessWidget {
                     icon: LucideIcons.book,
                     label: "Laporan",
                     color: const Color.fromARGB(255, 192, 251, 187),
-                    destination: CatatanKeuanganPage(),
+                    destination: LaporanKeuanganPage(),
                   ),
                 ],
               ),

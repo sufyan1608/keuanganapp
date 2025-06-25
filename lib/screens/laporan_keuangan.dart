@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 
 void main() {
   runApp(MaterialApp(
-    home: CatatanKeuanganPage(),
+    home: LaporanKeuanganPage(),
     debugShowCheckedModeBanner: false,
   ));
 }
 
-class CatatanKeuanganPage extends StatelessWidget {
+class LaporanKeuanganPage extends StatefulWidget {
+  @override
+  _LaporanKeuanganPageState createState() => _LaporanKeuanganPageState();
+}
+
+class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
+  String selectedTab = "laporan keuangan";
+  String selectedFilter = "bulan ini";
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,21 +30,39 @@ class CatatanKeuanganPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.arrow_back, color: Colors.white),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Icon(Icons.arrow_back, color: Colors.white),
+                  ),
                   SizedBox(height: 10),
                   Center(
                     child: Text(
                       "laporan keuangan",
-                      style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                   SizedBox(height: 15),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildTab("pemasukan", false),
-                      _buildTab("pengeluaran", false),
-                      _buildTab("catatan keuangan", true),
+                      _buildTab("pemasukan", selectedTab == "pemasukan", () {
+                        setState(() {
+                          selectedTab = "pemasukan";
+                        });
+                      }),
+                      _buildTab("pengeluaran", selectedTab == "pengeluaran", () {
+                        setState(() {
+                          selectedTab = "pengeluaran";
+                        });
+                      }),
+                      _buildTab("laporan keuangan", selectedTab == "laporan keuangan", () {
+                        setState(() {
+                          selectedTab = "laporan keuangan";
+                        });
+                      }),
                     ],
                   ),
                 ],
@@ -58,7 +84,8 @@ class CatatanKeuanganPage extends StatelessWidget {
                         child: Text("ubah siklus"),
                         style: TextButton.styleFrom(
                           backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
                         ),
                       ),
                     ],
@@ -75,14 +102,30 @@ class CatatanKeuanganPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildTab("bulan ini", true),
-                      _buildTab("bulan lalu", false),
-                      _buildTab("3 bulan", false),
+                      _buildTab("bulan ini", selectedFilter == "bulan ini", () {
+                        setState(() {
+                          selectedFilter = "bulan ini";
+                        });
+                      }),
+                      _buildTab("bulan lalu", selectedFilter == "bulan lalu", () {
+                        setState(() {
+                          selectedFilter = "bulan lalu";
+                        });
+                      }),
+                      _buildTab("3 bulan", selectedFilter == "3 bulan", () {
+                        setState(() {
+                          selectedFilter = "3 bulan";
+                        });
+                      }),
                     ],
                   ),
                   SizedBox(height: 20),
                   Text("Selisih", style: TextStyle(color: Colors.black54)),
-                  Text("-Rp 43.000", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black)),
+                  Text("-Rp 43.000",
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black)),
                   Divider(height: 30, thickness: 1),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -93,10 +136,12 @@ class CatatanKeuanganPage extends StatelessWidget {
                             children: [
                               Icon(Icons.arrow_downward, color: Colors.green),
                               SizedBox(width: 5),
-                              Text("pemasukan", style: TextStyle(color: Colors.black54)),
+                              Text("pemasukan",
+                                  style: TextStyle(color: Colors.black54)),
                             ],
                           ),
-                          Text("Rp 2.500.000", style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text("Rp 2.500.000",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                       Column(
@@ -105,10 +150,12 @@ class CatatanKeuanganPage extends StatelessWidget {
                             children: [
                               Icon(Icons.arrow_upward, color: Colors.red),
                               SizedBox(width: 5),
-                              Text("pengeluaran", style: TextStyle(color: Colors.black54)),
+                              Text("pengeluaran",
+                                  style: TextStyle(color: Colors.black54)),
                             ],
                           ),
-                          Text("-Rp 2.543.000", style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text("-Rp 2.543.000",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ],
@@ -122,18 +169,21 @@ class CatatanKeuanganPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTab(String label, bool isSelected) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.white : Color(0xFFD9D9D9),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? Colors.black : Colors.black54,
-          fontWeight: FontWeight.w500,
+  Widget _buildTab(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Color(0xFFD9D9D9),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : Colors.black54,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );

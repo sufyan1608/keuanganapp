@@ -1,12 +1,5 @@
-
 import 'package:flutter/material.dart';
-
-class Pengeluaran {
-  String keterangan;
-  double jumlah;
-
-  Pengeluaran({required this.keterangan, required this.jumlah});
-}
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PengeluaranScreen extends StatefulWidget {
   @override
@@ -14,14 +7,50 @@ class PengeluaranScreen extends StatefulWidget {
 }
 
 class _PengeluaranScreenState extends State<PengeluaranScreen> {
-  final List<Pengeluaran> pengeluaranList = [];
+  final supabase = Supabase.instance.client;
+  List<dynamic> pengeluaranList = [];
 
-  void _showForm({Pengeluaran? data, int? index}) {
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
+  Future<void> fetchData() async {
+    final response = await supabase.from('pengeluaran').select();
+    setState(() {
+      pengeluaranList = response;
+    });
+  }
+
+  Future<void> tambahPengeluaran(String keterangan, double jumlah) async {
+    await supabase.from('pengeluaran').insert({
+      'keterangan': keterangan,
+      'jumlah': jumlah,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    fetchData();
+  }
+
+  Future<void> editPengeluaran(int id, String keterangan, double jumlah) async {
+    await supabase
+        .from('pengeluaran')
+        .update({'keterangan': keterangan, 'jumlah': jumlah})
+        .eq('id', id);
+    fetchData();
+  }
+
+  Future<void> hapusPengeluaran(int id) async {
+    await supabase.from('pengeluaran').delete().eq('id', id);
+    fetchData();
+  }
+
+  void _showForm({Map<String, dynamic>? data}) {
     final TextEditingController keteranganController = TextEditingController(
-      text: data?.keterangan ?? '',
+      text: data?['keterangan'] ?? '',
     );
     final TextEditingController jumlahController = TextEditingController(
-      text: data?.jumlah.toString() ?? '',
+      text: data?['jumlah']?.toString() ?? '',
     );
 
     showDialog(
@@ -54,20 +83,12 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
                 onPressed: () {
                   final keterangan = keteranganController.text;
                   final jumlah = double.tryParse(jumlahController.text) ?? 0;
-
                   if (keterangan.isNotEmpty && jumlah > 0) {
-                    setState(() {
-                      if (data == null) {
-                        pengeluaranList.add(
-                          Pengeluaran(keterangan: keterangan, jumlah: jumlah),
-                        );
-                      } else if (index != null) {
-                        pengeluaranList[index] = Pengeluaran(
-                          keterangan: keterangan,
-                          jumlah: jumlah,
-                        );
-                      }
-                    });
+                    if (data == null) {
+                      tambahPengeluaran(keterangan, jumlah);
+                    } else {
+                      editPengeluaran(data['id'], keterangan, jumlah);
+                    }
                     Navigator.pop(context);
                   }
                 },
@@ -78,37 +99,11 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
     );
   }
 
-  void _hapusPengeluaran(int index) {
-    showDialog(
-      context: context,
-      builder:
-          (_) => AlertDialog(
-            title: Text("Hapus Pengeluaran"),
-            content: Text("Yakin ingin menghapus pengeluaran ini?"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("Batal"),
-              ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    pengeluaranList.removeAt(index);
-                  });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Pengeluaran berhasil dihapus")),
-                  );
-                },
-                child: Text("Hapus", style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-    );
-  }
-
   double _hitungTotal() {
-    return pengeluaranList.fold(0, (sum, item) => sum + item.jumlah);
+    return pengeluaranList.fold(
+      0,
+      (sum, item) => sum + (item['jumlah'] as num).toDouble(),
+    );
   }
 
   @override
@@ -116,15 +111,11 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
     final total = _hitungTotal();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Pengeluaran"),
-        backgroundColor: Colors.redAccent,
-      ),
+      appBar: AppBar(title: Text("Pengeluaran"), backgroundColor: Colors.red),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Total Card
             Card(
               color: Colors.red[50],
               elevation: 4,
@@ -133,7 +124,7 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
               ),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.redAccent,
+                  backgroundColor: Colors.red,
                   child: Icon(Icons.money_off, color: Colors.white),
                 ),
                 title: Text("Total Pengeluaran"),
@@ -148,8 +139,6 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
               ),
             ),
             SizedBox(height: 20),
-
-            // List pengeluaran
             Expanded(
               child:
                   pengeluaranList.isEmpty
@@ -174,16 +163,16 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
                               leading: CircleAvatar(
                                 backgroundColor: Colors.red[100],
                                 child: Icon(
-                                  Icons.money_off_csred,
-                                  color: Colors.red,
+                                  Icons.wallet,
+                                  color: Colors.red[900],
                                 ),
                               ),
                               title: Text(
-                                item.keterangan,
+                                item['keterangan'],
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               subtitle: Text(
-                                "Rp ${item.jumlah.toStringAsFixed(0)}",
+                                "Rp ${item['jumlah'].toStringAsFixed(0)}",
                                 style: TextStyle(color: Colors.red[800]),
                               ),
                               trailing: Row(
@@ -194,13 +183,12 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
                                       Icons.edit,
                                       color: Colors.orange,
                                     ),
-                                    onPressed:
-                                        () =>
-                                            _showForm(data: item, index: index),
+                                    onPressed: () => _showForm(data: item),
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _hapusPengeluaran(index),
+                                    onPressed:
+                                        () => hapusPengeluaran(item['id']),
                                   ),
                                 ],
                               ),
@@ -213,7 +201,7 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.red,
         icon: Icon(Icons.add),
         label: Text("Tambah"),
         onPressed: () => _showForm(),
