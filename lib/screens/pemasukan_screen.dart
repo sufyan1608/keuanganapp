@@ -1,12 +1,6 @@
-
 import 'package:flutter/material.dart';
-
-class Pemasukan {
-  String keterangan;
-  double jumlah;
-
-  Pemasukan({required this.keterangan, required this.jumlah});
-}
+import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PemasukanScreen extends StatefulWidget {
   @override
@@ -14,99 +8,165 @@ class PemasukanScreen extends StatefulWidget {
 }
 
 class _PemasukanScreenState extends State<PemasukanScreen> {
-  final List<Pemasukan> pemasukanList = [];
+  final supabase = Supabase.instance.client;
+  List<dynamic> pemasukanList = [];
 
-  void _showForm({Pemasukan? data, int? index}) {
-    final TextEditingController keteranganController = TextEditingController(
-      text: data?.keterangan ?? '',
-    );
-    final TextEditingController jumlahController = TextEditingController(
-      text: data?.jumlah.toString() ?? '',
-    );
-
-    showDialog(
-      context: context,
-      builder:
-          (_) => AlertDialog(
-            title: Text(data == null ? 'Tambah Pemasukan' : 'Edit Pemasukan'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: keteranganController,
-                  decoration: InputDecoration(labelText: 'Keterangan'),
-                ),
-                TextField(
-                  controller: jumlahController,
-                  decoration: InputDecoration(labelText: 'Jumlah'),
-                  keyboardType: TextInputType.number,
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Batal'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final keterangan = keteranganController.text;
-                  final jumlah = double.tryParse(jumlahController.text) ?? 0;
-
-                  if (keterangan.isNotEmpty && jumlah > 0) {
-                    setState(() {
-                      if (data == null) {
-                        pemasukanList.add(
-                          Pemasukan(keterangan: keterangan, jumlah: jumlah),
-                        );
-                      } else if (index != null) {
-                        pemasukanList[index] = Pemasukan(
-                          keterangan: keterangan,
-                          jumlah: jumlah,
-                        );
-                      }
-                    });
-                    Navigator.pop(context);
-                  }
-                },
-                child: Text(data == null ? 'Simpan' : 'Update'),
-              ),
-            ],
-          ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
   }
 
-  void _hapusPemasukan(int index) {
+  Future<void> fetchData() async {
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      final response = await supabase
+          .from('pemasukan')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      setState(() {
+        pemasukanList = response;
+      });
+    } catch (e) {
+      print('Fetch error: $e');
+    }
+  }
+
+  Future<void> tambahPemasukan(
+    String keterangan,
+    double jumlah,
+    DateTime tanggal,
+  ) async {
+    final userId = supabase.auth.currentUser?.id;
+    await supabase.from('pemasukan').insert({
+      'keterangan': keterangan,
+      'jumlah': jumlah,
+      'tanggal': tanggal.toIso8601String(),
+      'created_at': DateTime.now().toIso8601String(),
+      'user_id': userId,
+    });
+    fetchData();
+  }
+
+  Future<void> editPemasukan(
+    String id,
+    String keterangan,
+    double jumlah,
+    DateTime tanggal,
+  ) async {
+    await supabase
+        .from('pemasukan')
+        .update({
+          'keterangan': keterangan,
+          'jumlah': jumlah,
+          'tanggal': tanggal.toIso8601String(),
+        })
+        .eq('id', id);
+    fetchData();
+  }
+
+  Future<void> hapusPemasukan(String id) async {
+    await supabase.from('pemasukan').delete().eq('id', id);
+    fetchData();
+  }
+
+  void _showForm({Map<String, dynamic>? data}) {
+    final keteranganController = TextEditingController(
+      text: data?['keterangan'] ?? '',
+    );
+    final jumlahController = TextEditingController(
+      text: data?['jumlah']?.toString() ?? '',
+    );
+    DateTime selectedDate =
+        data?['tanggal'] != null
+            ? DateTime.tryParse(data!['tanggal'].toString()) ?? DateTime.now()
+            : DateTime.now();
+
     showDialog(
       context: context,
-      builder:
-          (_) => AlertDialog(
-            title: Text("Hapus Pemasukan"),
-            content: Text("Yakin ingin menghapus pemasukan ini?"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("Batal"),
+      builder: (_) {
+        return StatefulBuilder(
+          builder:
+              (context, setStateDialog) => AlertDialog(
+                title: Text(
+                  data == null ? 'Tambah Pemasukan' : 'Edit Pemasukan',
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: keteranganController,
+                      decoration: InputDecoration(labelText: 'Keterangan'),
+                    ),
+                    TextField(
+                      controller: jumlahController,
+                      decoration: InputDecoration(labelText: 'Jumlah'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Text(DateFormat('dd MMM yyyy').format(selectedDate)),
+                        Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.calendar_today),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setStateDialog(() {
+                                selectedDate = picked;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Batal'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      final keterangan = keteranganController.text;
+                      final jumlah =
+                          double.tryParse(jumlahController.text) ?? 0;
+                      if (keterangan.isNotEmpty && jumlah > 0) {
+                        if (data == null) {
+                          tambahPemasukan(keterangan, jumlah, selectedDate);
+                        } else {
+                          editPemasukan(
+                            data['id'],
+                            keterangan,
+                            jumlah,
+                            selectedDate,
+                          );
+                        }
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: Text(data == null ? 'Simpan' : 'Update'),
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    pemasukanList.removeAt(index);
-                  });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Pemasukan berhasil dihapus")),
-                  );
-                },
-                child: Text("Hapus", style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
+        );
+      },
     );
   }
 
   double _hitungTotal() {
-    return pemasukanList.fold(0, (sum, item) => sum + item.jumlah);
+    return pemasukanList.fold(
+      0,
+      (sum, item) => sum + (item['jumlah'] as num).toDouble(),
+    );
   }
 
   @override
@@ -119,7 +179,6 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Total Card
             Card(
               color: Colors.green[50],
               elevation: 4,
@@ -143,8 +202,6 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
               ),
             ),
             SizedBox(height: 20),
-
-            // List pemasukan
             Expanded(
               child:
                   pemasukanList.isEmpty
@@ -168,14 +225,17 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
                               contentPadding: EdgeInsets.all(16),
                               leading: CircleAvatar(
                                 backgroundColor: Colors.green[100],
-                                child: Icon(Icons.wallet, color: Colors.green),
+                                child: Icon(
+                                  Icons.wallet,
+                                  color: Colors.green[900],
+                                ),
                               ),
                               title: Text(
-                                item.keterangan,
+                                item['keterangan'] ?? '',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               subtitle: Text(
-                                "Rp ${item.jumlah.toStringAsFixed(0)}",
+                                "Rp ${item['jumlah'].toStringAsFixed(0)}",
                                 style: TextStyle(color: Colors.green[800]),
                               ),
                               trailing: Row(
@@ -186,13 +246,11 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
                                       Icons.edit,
                                       color: Colors.orange,
                                     ),
-                                    onPressed:
-                                        () =>
-                                            _showForm(data: item, index: index),
+                                    onPressed: () => _showForm(data: item),
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _hapusPemasukan(index),
+                                    onPressed: () => hapusPemasukan(item['id']),
                                   ),
                                 ],
                               ),
