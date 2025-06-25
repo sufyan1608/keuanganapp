@@ -1,77 +1,139 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'pemasukan_screen.dart';
-import 'pengeluaran_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'pemasukan_screen.dart' as pemasukan;
+import 'pengeluaran_screen.dart' as pengeluaran;
 import 'catatan_screen.dart';
 import 'profil_screen.dart';
-import 'laporan_keuangan.dart';
+import 'statistik_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
-  final double anggaran = 5000000;
-  final double pengeluaran = 2100000;
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  double totalPemasukan = 0;
+  double totalPengeluaran = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
+  Future<void> fetchData() async {
+    final supabase = Supabase.instance.client;
+    try {
+      final userId = supabase.auth.currentUser?.id;
+
+      final pemasukanRaw = await supabase
+          .from('pemasukan')
+          .select('jumlah')
+          .eq('user_id', userId);
+
+      final pengeluaranRaw = await supabase
+          .from('pengeluaran')
+          .select('jumlah')
+          .eq('user_id', userId);
+
+      final pemasukanData =
+          pemasukanRaw.map((e) => (e['jumlah'] ?? 0) as num).toList();
+      final pengeluaranData =
+          pengeluaranRaw.map((e) => (e['jumlah'] ?? 0) as num).toList();
+
+      setState(() {
+        totalPemasukan = pemasukanData.fold(0, (sum, item) => sum + item);
+        totalPengeluaran = pengeluaranData.fold(0, (sum, item) => sum + item);
+      });
+    } catch (e) {
+      print("Error fetchData: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Gagal memuat data')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    double sisa = anggaran - pengeluaran;
+    double sisa = totalPemasukan - totalPengeluaran;
 
     return Scaffold(
-      appBar: AppBar(title: Text("Hai, aku!"), backgroundColor: Colors.teal),
-      backgroundColor: Color(0xFFF4F7FE),
+      appBar: AppBar(
+        title: const Text("Dashboard Keuangan"),
+        backgroundColor: Colors.teal,
+        elevation: 0,
+      ),
+      backgroundColor: const Color(0xFFF4F7FE),
       body: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildInfoCard(
-                  "Anggaran",
-                  anggaran,
-                  Colors.teal.shade100,
-                  Colors.teal,
+                Expanded(
+                  child: _buildInfoCard(
+                    "Pemasukan",
+                    totalPemasukan,
+                    Colors.teal.shade100,
+                    Colors.teal,
+                    LucideIcons.arrowDownCircle,
+                  ),
                 ),
-                _buildInfoCard(
-                  "Pengeluaran",
-                  pengeluaran,
-                  Colors.red.shade100,
-                  Colors.red,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInfoCard(
+                    "Pengeluaran",
+                    totalPengeluaran,
+                    Colors.red.shade100,
+                    Colors.red,
+                    LucideIcons.arrowUpCircle,
+                  ),
                 ),
-                _buildInfoCard(
-                  "Sisa",
-                  sisa,
-                  Colors.green.shade100,
-                  Colors.green,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildInfoCard(
+                    "Sisa",
+                    sisa,
+                    Colors.green.shade100,
+                    Colors.green,
+                    LucideIcons.wallet,
+                  ),
                 ),
               ],
             ),
-            SizedBox(height: 24),
-            Align(
+            const SizedBox(height: 24),
+            const Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                "Menu",
+                "Menu Utama",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
+                childAspectRatio: 1.1,
                 children: [
                   _buildMenuCard(
                     context,
                     icon: LucideIcons.wallet,
                     label: "Pemasukan",
                     color: Colors.teal.shade100,
-                    destination: PemasukanScreen(),
+                    destination: pemasukan.PemasukanScreen(),
                   ),
                   _buildMenuCard(
                     context,
                     icon: LucideIcons.creditCard,
                     label: "Pengeluaran",
                     color: Colors.red.shade100,
-                    destination: PengeluaranScreen(),
+                    destination: pengeluaran.PengeluaranScreen(),
                   ),
                   _buildMenuCard(
                     context,
@@ -85,7 +147,7 @@ class DashboardScreen extends StatelessWidget {
                     icon: LucideIcons.pieChart,
                     label: "Statistik",
                     color: Colors.purple.shade100,
-                    destination: PlaceholderScreen(title: "Statistik"),
+                    destination: StatistikScreen(),
                   ),
                   _buildMenuCard(
                     context,
@@ -93,13 +155,6 @@ class DashboardScreen extends StatelessWidget {
                     label: "Profil",
                     color: Colors.blue.shade100,
                     destination: ProfilScreen(),
-                  ),
-                  _buildMenuCard(
-                    context,
-                    icon: LucideIcons.book,
-                    label: "Laporan",
-                    color: const Color.fromARGB(255, 192, 251, 187),
-                    destination: CatatanKeuanganPage(),
                   ),
                 ],
               ),
@@ -115,25 +170,30 @@ class DashboardScreen extends StatelessWidget {
     double value,
     Color bgColor,
     Color valueColor,
+    IconData icon,
   ) {
-    return Expanded(
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 4),
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Text(
-              "Rp ${value.toStringAsFixed(0)}",
-              style: TextStyle(color: valueColor, fontWeight: FontWeight.bold),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: valueColor, size: 24),
+          const SizedBox(height: 8),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text(
+            "Rp ${(value.isNaN ? 0 : value).toStringAsFixed(0)}",
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -146,43 +206,39 @@ class DashboardScreen extends StatelessWidget {
     required Widget destination,
   }) {
     return InkWell(
-      onTap:
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => destination),
-          ),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => destination),
+        );
+        fetchData();
+      },
       borderRadius: BorderRadius.circular(20),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
               backgroundColor: color,
+              radius: 26,
               child: Icon(icon, color: Colors.black),
             ),
-            SizedBox(height: 10),
-            Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
       ),
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const PlaceholderScreen({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text("Halaman $title")),
     );
   }
 }

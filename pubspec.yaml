@@ -15,6 +15,8 @@ dependencies:
   lucide_icons: ^0.257.0
   fl_chart: ^0.66.0
   intl: ^0.19.0 # digunakan untuk format tanggal
+  supabase_flutter: ^1.10.17
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -23,3 +25,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
