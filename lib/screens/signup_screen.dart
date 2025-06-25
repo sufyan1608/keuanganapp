@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -13,24 +14,58 @@ class _SignupScreenState extends State<SignupScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   bool isPasswordVisible = false;
+  bool isLoading = false;
 
-  void signup() {
+  final supabase = Supabase.instance.client;
+
+  Future<void> signup() async {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
     final password = passwordController.text;
 
-    if (name.isNotEmpty && email.isNotEmpty && password.length >= 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Akun berhasil dibuat! Silakan login.")),
-      );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => LoginScreen()),
-      );
-    } else {
+    if (name.isEmpty || email.isEmpty || password.length < 6) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Isi semua data dengan benar")));
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final response = await supabase.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      final user = response.user;
+      if (user != null) {
+        // Simpan data ke tabel 'users'
+        await supabase.from('users').insert({
+          'id': user.id,
+          'nama': name,
+          'email': email,
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Akun berhasil dibuat! Silakan login.")),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => LoginScreen()),
+        );
+      }
+    } on AuthException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 
@@ -85,10 +120,11 @@ class _SignupScreenState extends State<SignupScreen> {
                             ? Icons.visibility
                             : Icons.visibility_off,
                       ),
-                      onPressed:
-                          () => setState(
-                            () => isPasswordVisible = !isPasswordVisible,
-                          ),
+                      onPressed: () {
+                        setState(() {
+                          isPasswordVisible = !isPasswordVisible;
+                        });
+                      },
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -97,7 +133,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: signup,
+                  onPressed: isLoading ? null : signup,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
                     padding: EdgeInsets.symmetric(horizontal: 60, vertical: 14),
@@ -105,7 +141,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: Text("Daftar", style: TextStyle(fontSize: 18)),
+                  child:
+                      isLoading
+                          ? CircularProgressIndicator(color: Colors.white)
+                          : Text("Daftar", style: TextStyle(fontSize: 18)),
                 ),
                 SizedBox(height: 16),
                 TextButton(
