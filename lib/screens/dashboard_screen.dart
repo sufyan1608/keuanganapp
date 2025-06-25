@@ -6,7 +6,7 @@ import 'pemasukan_screen.dart' as pemasukan;
 import 'pengeluaran_screen.dart' as pengeluaran;
 import 'catatan_screen.dart';
 import 'profil_screen.dart';
-import 'statistik_screen.dart';
+import 'statistik_scren.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
