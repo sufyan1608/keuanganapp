@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PengeluaranScreen extends StatefulWidget {
@@ -17,85 +18,147 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
   }
 
   Future<void> fetchData() async {
-    final response = await supabase.from('pengeluaran').select();
-    setState(() {
-      pengeluaranList = response;
-    });
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      final response = await supabase
+          .from('pengeluaran')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      setState(() {
+        pengeluaranList = response;
+      });
+    } catch (e) {
+      print('Fetch error: $e');
+    }
   }
 
-  Future<void> tambahPengeluaran(String keterangan, double jumlah) async {
+  Future<void> tambahPengeluaran(
+    String keterangan,
+    double jumlah,
+    DateTime tanggal,
+  ) async {
+    final userId = supabase.auth.currentUser?.id;
     await supabase.from('pengeluaran').insert({
       'keterangan': keterangan,
       'jumlah': jumlah,
+      'tanggal': tanggal.toIso8601String(),
       'created_at': DateTime.now().toIso8601String(),
+      'user_id': userId,
     });
     fetchData();
   }
 
-  Future<void> editPengeluaran(int id, String keterangan, double jumlah) async {
+  Future<void> editPengeluaran(
+    String id,
+    String keterangan,
+    double jumlah,
+    DateTime tanggal,
+  ) async {
     await supabase
         .from('pengeluaran')
-        .update({'keterangan': keterangan, 'jumlah': jumlah})
+        .update({
+          'keterangan': keterangan,
+          'jumlah': jumlah,
+          'tanggal': tanggal.toIso8601String(),
+        })
         .eq('id', id);
     fetchData();
   }
 
-  Future<void> hapusPengeluaran(int id) async {
+  Future<void> hapusPengeluaran(String id) async {
     await supabase.from('pengeluaran').delete().eq('id', id);
     fetchData();
   }
 
   void _showForm({Map<String, dynamic>? data}) {
-    final TextEditingController keteranganController = TextEditingController(
+    final keteranganController = TextEditingController(
       text: data?['keterangan'] ?? '',
     );
-    final TextEditingController jumlahController = TextEditingController(
+    final jumlahController = TextEditingController(
       text: data?['jumlah']?.toString() ?? '',
     );
+    DateTime selectedDate =
+        data?['tanggal'] != null
+            ? DateTime.tryParse(data!['tanggal'].toString()) ?? DateTime.now()
+            : DateTime.now();
 
     showDialog(
       context: context,
-      builder:
-          (_) => AlertDialog(
-            title: Text(
-              data == null ? 'Tambah Pengeluaran' : 'Edit Pengeluaran',
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: keteranganController,
-                  decoration: InputDecoration(labelText: 'Keterangan'),
+      builder: (_) {
+        return StatefulBuilder(
+          builder:
+              (context, setStateDialog) => AlertDialog(
+                title: Text(
+                  data == null ? 'Tambah Pengeluaran' : 'Edit Pengeluaran',
                 ),
-                TextField(
-                  controller: jumlahController,
-                  decoration: InputDecoration(labelText: 'Jumlah'),
-                  keyboardType: TextInputType.number,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: keteranganController,
+                      decoration: InputDecoration(labelText: 'Keterangan'),
+                    ),
+                    TextField(
+                      controller: jumlahController,
+                      decoration: InputDecoration(labelText: 'Jumlah'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Text(DateFormat('dd MMM yyyy').format(selectedDate)),
+                        Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.calendar_today),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setStateDialog(() {
+                                selectedDate = picked;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Batal'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Batal'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      final keterangan = keteranganController.text;
+                      final jumlah =
+                          double.tryParse(jumlahController.text) ?? 0;
+                      if (keterangan.isNotEmpty && jumlah > 0) {
+                        if (data == null) {
+                          tambahPengeluaran(keterangan, jumlah, selectedDate);
+                        } else {
+                          editPengeluaran(
+                            data['id'],
+                            keterangan,
+                            jumlah,
+                            selectedDate,
+                          );
+                        }
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: Text(data == null ? 'Simpan' : 'Update'),
+                  ),
+                ],
               ),
-              ElevatedButton(
-                onPressed: () {
-                  final keterangan = keteranganController.text;
-                  final jumlah = double.tryParse(jumlahController.text) ?? 0;
-                  if (keterangan.isNotEmpty && jumlah > 0) {
-                    if (data == null) {
-                      tambahPengeluaran(keterangan, jumlah);
-                    } else {
-                      editPengeluaran(data['id'], keterangan, jumlah);
-                    }
-                    Navigator.pop(context);
-                  }
-                },
-                child: Text(data == null ? 'Simpan' : 'Update'),
-              ),
-            ],
-          ),
+        );
+      },
     );
   }
 
@@ -168,7 +231,7 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
                                 ),
                               ),
                               title: Text(
-                                item['keterangan'],
+                                item['keterangan'] ?? '',
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               subtitle: Text(

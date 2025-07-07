@@ -6,7 +6,7 @@ import 'pemasukan_screen.dart' as pemasukan;
 import 'pengeluaran_screen.dart' as pengeluaran;
 import 'catatan_screen.dart';
 import 'profil_screen.dart';
-import 'statistik_scren.dart';
+import 'statistik_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -67,7 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Colors.teal,
         elevation: 0,
       ),
-      backgroundColor: const Color(0xFFF4F7FE),
+      backgroundColor: const Color(0xFFF9FAFB),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -78,61 +78,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: _buildInfoCard(
                     "Pemasukan",
                     totalPemasukan,
-                    Colors.teal.shade100,
-                    Colors.teal,
+                    Colors.greenAccent.shade100,
+                    Colors.green.shade700,
                     LucideIcons.arrowDownCircle,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _buildInfoCard(
                     "Pengeluaran",
                     totalPengeluaran,
-                    Colors.red.shade100,
-                    Colors.red,
+                    Colors.redAccent.shade100,
+                    Colors.red.shade700,
                     LucideIcons.arrowUpCircle,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _buildInfoCard(
                     "Sisa",
                     sisa,
-                    Colors.green.shade100,
-                    Colors.green,
+                    Colors.blue.shade100,
+                    Colors.blue.shade700,
                     LucideIcons.wallet,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 "Menu Utama",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.1,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: 1,
                 children: [
                   _buildMenuCard(
                     context,
                     icon: LucideIcons.wallet,
                     label: "Pemasukan",
-                    color: Colors.teal.shade100,
-                    destination: pemasukan.PemasukanScreen(),
+                    color: Colors.greenAccent.shade100,
+                    destination: pemasukan.PemasukanScreen(), // ✅ tanpa const
                   ),
                   _buildMenuCard(
                     context,
                     icon: LucideIcons.creditCard,
                     label: "Pengeluaran",
-                    color: Colors.red.shade100,
+                    color: Colors.redAccent.shade100,
                     destination: pengeluaran.PengeluaranScreen(),
                   ),
                   _buildMenuCard(
@@ -140,21 +140,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     icon: LucideIcons.clipboardList,
                     label: "Catatan",
                     color: Colors.amber.shade100,
-                    destination: CatatanScreen(),
+                    destination: CatatanScreen(), // ✅ tanpa const
                   ),
                   _buildMenuCard(
                     context,
                     icon: LucideIcons.pieChart,
                     label: "Statistik",
                     color: Colors.purple.shade100,
-                    destination: StatistikScreen(),
+                    destination:
+                        const StatistikScreen(), // jika konstruktor const
                   ),
                   _buildMenuCard(
                     context,
                     icon: LucideIcons.user,
                     label: "Profil",
                     color: Colors.blue.shade100,
-                    destination: ProfilScreen(),
+                    destination: const ProfilScreen(), // jika konstruktor const
                   ),
                 ],
               ),
@@ -173,18 +174,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     IconData icon,
   ) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: valueColor, size: 24),
+          Icon(icon, color: valueColor, size: 28),
           const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 6),
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
             "Rp ${(value.isNaN ? 0 : value).toStringAsFixed(0)}",
             style: TextStyle(
@@ -215,14 +229,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
-              blurRadius: 4,
-              offset: Offset(0, 2),
+              color: Colors.black12.withOpacity(0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -231,11 +246,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             CircleAvatar(
               backgroundColor: color,
-              radius: 26,
-              child: Icon(icon, color: Colors.black),
+              radius: 28,
+              child: Icon(icon, color: Colors.black87, size: 26),
             ),
-            const SizedBox(height: 10),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
           ],
         ),
       ),
