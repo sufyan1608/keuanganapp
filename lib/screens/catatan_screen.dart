@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CatatanScreen extends StatefulWidget {
   @override
@@ -49,7 +50,6 @@ class _CatatanScreenState extends State<CatatanScreen> {
     }
 
     if (editingId == null) {
-      // Tambah
       await supabase.from('catatan').insert({
         'user_id': user.id,
         'isi': isi,
@@ -57,18 +57,11 @@ class _CatatanScreenState extends State<CatatanScreen> {
         'penting': false,
         'selesai': false,
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Catatan berhasil ditambahkan')));
     } else {
-      // Edit
       await supabase
           .from('catatan')
           .update({'isi': isi, 'tanggal': selectedDate.toIso8601String()})
           .eq('id', editingId);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Catatan berhasil diperbarui')));
       editingId = null;
     }
 
@@ -81,7 +74,7 @@ class _CatatanScreenState extends State<CatatanScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder:
-          (context) => AlertDialog(
+          (_) => AlertDialog(
             title: Text("Hapus Catatan"),
             content: Text("Yakin ingin menghapus catatan ini?"),
             actions: [
@@ -100,9 +93,6 @@ class _CatatanScreenState extends State<CatatanScreen> {
     if (confirm == true) {
       await supabase.from('catatan').delete().eq('id', id);
       fetchCatatan();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Catatan berhasil dihapus')));
     }
   }
 
@@ -119,7 +109,7 @@ class _CatatanScreenState extends State<CatatanScreen> {
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(2100),
     );
     if (picked != null) {
       setState(() {
@@ -138,63 +128,69 @@ class _CatatanScreenState extends State<CatatanScreen> {
         }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: Text("Catatan"), backgroundColor: Colors.teal),
+      appBar: AppBar(
+        title: const Text("Catatan"),
+        backgroundColor: Colors.teal,
+      ),
+      backgroundColor: Colors.grey[100],
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(
-              controller: _catatanController,
-              decoration: InputDecoration(
-                labelText: 'Catatan',
-                suffixIcon: IconButton(
-                  icon: Icon(editingId == null ? Icons.send : Icons.save),
-                  onPressed: tambahAtauEditCatatan,
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12.0,
+                  vertical: 8,
+                ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _catatanController,
+                      decoration: InputDecoration(
+                        labelText: 'Tulis catatan...',
+                        border: InputBorder.none,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            editingId == null ? Icons.send : Icons.save,
+                          ),
+                          onPressed: tambahAtauEditCatatan,
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 18),
+                        SizedBox(width: 8),
+                        Text(DateFormat('dd MMM yyyy').format(selectedDate)),
+                        Spacer(),
+                        TextButton(
+                          onPressed: _selectDate,
+                          child: Text("Ubah Tanggal"),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 20),
-                SizedBox(width: 8),
-                Text(DateFormat('dd MMM yyyy').format(selectedDate)),
-                Spacer(),
-                TextButton(
-                  onPressed: _selectDate,
-                  child: Text("Pilih Tanggal"),
+                Checkbox(
+                  value: showOnlyImportant,
+                  onChanged: (val) => setState(() => showOnlyImportant = val!),
                 ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Checkbox(
-                      value: showOnlyImportant,
-                      onChanged: (val) {
-                        setState(() {
-                          showOnlyImportant = val!;
-                        });
-                      },
-                    ),
-                    Text("Penting"),
-                  ],
+                Text("Penting"),
+                SizedBox(width: 20),
+                Checkbox(
+                  value: showOnlyIncomplete,
+                  onChanged: (val) => setState(() => showOnlyIncomplete = val!),
                 ),
-                Row(
-                  children: [
-                    Checkbox(
-                      value: showOnlyIncomplete,
-                      onChanged: (val) {
-                        setState(() {
-                          showOnlyIncomplete = val!;
-                        });
-                      },
-                    ),
-                    Text("Belum Selesai"),
-                  ],
-                ),
+                Text("Belum Selesai"),
               ],
             ),
             Divider(),
@@ -206,10 +202,13 @@ class _CatatanScreenState extends State<CatatanScreen> {
                         itemCount: filteredList.length,
                         itemBuilder: (context, index) {
                           final item = filteredList[index];
-                          final DateTime tanggal = DateTime.parse(
-                            item['tanggal'],
-                          );
+                          final tanggal = DateTime.parse(item['tanggal']);
                           return Card(
+                            margin: EdgeInsets.symmetric(vertical: 6),
+                            elevation: 3,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: ListTile(
                               title: Row(
                                 children: [
@@ -220,14 +219,22 @@ class _CatatanScreenState extends State<CatatanScreen> {
                                       size: 18,
                                     ),
                                   SizedBox(width: 4),
-                                  Expanded(child: Text(item['isi'] ?? '')),
+                                  Expanded(
+                                    child: Text(
+                                      item['isi'] ?? '',
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Tanggal: ${DateFormat('dd MMM yyyy').format(tanggal)}",
+                                    DateFormat('dd MMM yyyy').format(tanggal),
+                                    style: TextStyle(color: Colors.grey[600]),
                                   ),
                                   Row(
                                     children: [
@@ -248,6 +255,14 @@ class _CatatanScreenState extends State<CatatanScreen> {
                                       ),
                                       Spacer(),
                                       TextButton.icon(
+                                        icon: Icon(
+                                          Icons.star,
+                                          color:
+                                              item['penting'] == true
+                                                  ? Colors.orange
+                                                  : Colors.grey,
+                                        ),
+                                        label: Text("Penting"),
                                         onPressed: () async {
                                           await supabase
                                               .from('catatan')
@@ -258,14 +273,6 @@ class _CatatanScreenState extends State<CatatanScreen> {
                                               .eq('id', item['id']);
                                           fetchCatatan();
                                         },
-                                        icon: Icon(
-                                          Icons.star,
-                                          color:
-                                              item['penting'] == true
-                                                  ? Colors.orange
-                                                  : Colors.grey,
-                                        ),
-                                        label: Text("Penting"),
                                       ),
                                     ],
                                   ),

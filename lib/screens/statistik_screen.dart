@@ -29,6 +29,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
         .from('pemasukan')
         .select('jumlah, tanggal')
         .eq('user_id', userId);
+
     var pengeluaranQuery = supabase
         .from('pengeluaran')
         .select('jumlah, tanggal')
@@ -61,17 +62,20 @@ class _StatistikScreenState extends State<StatistikScreen> {
     final sisa = totalPemasukan - totalPengeluaran;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         title: const Text('Statistik Keuangan'),
-        backgroundColor: Colors.purple,
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        elevation: 2,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 _buildSummaryCard("Pemasukan", totalPemasukan, Colors.green),
                 _buildSummaryCard("Pengeluaran", totalPengeluaran, Colors.red),
@@ -104,7 +108,12 @@ class _StatistikScreenState extends State<StatistikScreen> {
                           : '${DateFormat('dd MMM').format(selectedDateRange!.start)} - ${DateFormat('dd MMM').format(selectedDateRange!.end)}',
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple.shade300,
+                      backgroundColor: Colors.deepPurple.shade400,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
@@ -114,131 +123,106 @@ class _StatistikScreenState extends State<StatistikScreen> {
                   icon: const Icon(Icons.refresh),
                   label: const Text("Refresh"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Diagram Pie",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-            const SizedBox(height: 10),
+            _buildSectionTitle("Diagram Pie"),
             Expanded(
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 40,
-                  sections: [
-                    PieChartSectionData(
-                      value: totalPemasukan > 0 ? totalPemasukan : 0,
-                      title: 'Pemasukan',
-                      color: Colors.green,
-                      radius: 60,
-                      titleStyle: const TextStyle(color: Colors.white),
-                    ),
-                    PieChartSectionData(
-                      value: totalPengeluaran > 0 ? totalPengeluaran : 0,
-                      title: 'Pengeluaran',
-                      color: Colors.red,
-                      radius: 60,
-                      titleStyle: const TextStyle(color: Colors.white),
-                    ),
-                    PieChartSectionData(
-                      value: sisa > 0 ? sisa : 0,
-                      title: 'Sisa',
-                      color: Colors.blue,
-                      radius: 60,
-                      titleStyle: const TextStyle(color: Colors.white),
-                    ),
-                  ],
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Grafik Batang",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  barGroups: [
-                    BarChartGroupData(
-                      x: 0,
-                      barRods: [
-                        BarChartRodData(
-                          toY: totalPemasukan > 0 ? totalPemasukan : 0,
-                          color: Colors.green,
-                          width: 22,
-                          borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: PieChart(
+                    PieChartData(
+                      sectionsSpace: 4,
+                      centerSpaceRadius: 40,
+                      sections: [
+                        _buildPieSection(
+                          totalPemasukan,
+                          'Pemasukan',
+                          Colors.green,
                         ),
-                      ],
-                    ),
-                    BarChartGroupData(
-                      x: 1,
-                      barRods: [
-                        BarChartRodData(
-                          toY: totalPengeluaran > 0 ? totalPengeluaran : 0,
-                          color: Colors.red,
-                          width: 22,
-                          borderRadius: BorderRadius.circular(6),
+                        _buildPieSection(
+                          totalPengeluaran,
+                          'Pengeluaran',
+                          Colors.red,
                         ),
+                        _buildPieSection(sisa, 'Sisa', Colors.blue),
                       ],
-                    ),
-                    BarChartGroupData(
-                      x: 2,
-                      barRods: [
-                        BarChartRodData(
-                          toY: sisa > 0 ? sisa : 0,
-                          color: Colors.blue,
-                          width: 22,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ],
-                    ),
-                  ],
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, _) {
-                          switch (value.toInt()) {
-                            case 0:
-                              return const Text('Pemasukan');
-                            case 1:
-                              return const Text('Pengeluaran');
-                            case 2:
-                              return const Text('Sisa');
-                            default:
-                              return const Text('');
-                          }
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            _buildSectionTitle("Grafik Batang"),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 200,
+              child: Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: BarChart(
+                    BarChartData(
+                      barGroups: [
+                        _buildBarGroup(0, totalPemasukan, Colors.green),
+                        _buildBarGroup(1, totalPengeluaran, Colors.red),
+                        _buildBarGroup(2, sisa, Colors.blue),
+                      ],
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, _) {
+                              switch (value.toInt()) {
+                                case 0:
+                                  return const Text('Pemasukan');
+                                case 1:
+                                  return const Text('Pengeluaran');
+                                case 2:
+                                  return const Text('Sisa');
+                                default:
+                                  return const Text('');
+                              }
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                      ),
+                      gridData: FlGridData(show: false),
+                      borderData: FlBorderData(show: false),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -253,6 +237,34 @@ class _StatistikScreenState extends State<StatistikScreen> {
     );
   }
 
+  PieChartSectionData _buildPieSection(
+    double value,
+    String title,
+    Color color,
+  ) {
+    return PieChartSectionData(
+      value: value > 0 ? value : 0.0001,
+      title: title,
+      color: color,
+      radius: 60,
+      titleStyle: const TextStyle(color: Colors.white),
+    );
+  }
+
+  BarChartGroupData _buildBarGroup(int x, double value, Color color) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: value > 0 ? value : 0,
+          color: color,
+          width: 22,
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSummaryCard(String label, double value, Color color) {
     return Container(
       width: 110,
@@ -260,7 +272,7 @@ class _StatistikScreenState extends State<StatistikScreen> {
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,6 +302,16 @@ class _StatistikScreenState extends State<StatistikScreen> {
         const SizedBox(width: 6),
         Text(label),
       ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      ),
     );
   }
 }

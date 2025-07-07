@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PemasukanScreen extends StatefulWidget {
+  const PemasukanScreen({super.key});
+
   @override
   State<PemasukanScreen> createState() => _PemasukanScreenState();
 }
@@ -10,6 +12,8 @@ class PemasukanScreen extends StatefulWidget {
 class _PemasukanScreenState extends State<PemasukanScreen> {
   final supabase = Supabase.instance.client;
   List<dynamic> pemasukanList = [];
+  List<dynamic> filteredList = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -24,9 +28,11 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
           .from('pemasukan')
           .select()
           .eq('user_id', userId)
-          .order('created_at', ascending: false);
+          .order('tanggal', ascending: false);
+
       setState(() {
         pemasukanList = response;
+        filteredList = pemasukanList;
       });
     } catch (e) {
       print('Fetch error: $e');
@@ -46,7 +52,10 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
       'created_at': DateTime.now().toIso8601String(),
       'user_id': userId,
     });
-    fetchData();
+    await fetchData();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Pemasukan berhasil ditambahkan")),
+    );
   }
 
   Future<void> editPemasukan(
@@ -63,12 +72,18 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
           'tanggal': tanggal.toIso8601String(),
         })
         .eq('id', id);
-    fetchData();
+    await fetchData();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Pemasukan berhasil diperbarui")),
+    );
   }
 
   Future<void> hapusPemasukan(String id) async {
     await supabase.from('pemasukan').delete().eq('id', id);
-    fetchData();
+    await fetchData();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Pemasukan berhasil dihapus")));
   }
 
   void _showForm({Map<String, dynamic>? data}) {
@@ -97,20 +112,22 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
                   children: [
                     TextField(
                       controller: keteranganController,
-                      decoration: InputDecoration(labelText: 'Keterangan'),
+                      decoration: const InputDecoration(
+                        labelText: 'Keterangan',
+                      ),
                     ),
                     TextField(
                       controller: jumlahController,
-                      decoration: InputDecoration(labelText: 'Jumlah'),
+                      decoration: const InputDecoration(labelText: 'Jumlah'),
                       keyboardType: TextInputType.number,
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Text(DateFormat('dd MMM yyyy').format(selectedDate)),
-                        Spacer(),
+                        const Spacer(),
                         IconButton(
-                          icon: Icon(Icons.calendar_today),
+                          icon: const Icon(Icons.calendar_today),
                           onPressed: () async {
                             final picked = await showDatePicker(
                               context: context,
@@ -132,7 +149,7 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text('Batal'),
+                    child: const Text('Batal'),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -163,10 +180,25 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
   }
 
   double _hitungTotal() {
-    return pemasukanList.fold(
+    return filteredList.fold(
       0,
       (sum, item) => sum + (item['jumlah'] as num).toDouble(),
     );
+  }
+
+  void _filterSearch(String query) {
+    setState(() {
+      filteredList =
+          pemasukanList
+              .where(
+                (item) =>
+                    item['keterangan'] != null &&
+                    item['keterangan'].toLowerCase().contains(
+                      query.toLowerCase(),
+                    ),
+              )
+              .toList();
+    });
   }
 
   @override
@@ -174,98 +206,121 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
     final total = _hitungTotal();
 
     return Scaffold(
-      appBar: AppBar(title: Text("Pemasukan"), backgroundColor: Colors.green),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Card(
-              color: Colors.green[50],
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Colors.green,
-                  child: Icon(Icons.attach_money, color: Colors.white),
+      appBar: AppBar(
+        title: const Text("Pemasukan"),
+        backgroundColor: Colors.green,
+      ),
+      body: RefreshIndicator(
+        onRefresh: fetchData,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              TextField(
+                controller: _searchController,
+                onChanged: _filterSearch,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Cari berdasarkan keterangan...',
                 ),
-                title: Text("Total Pemasukan"),
-                subtitle: Text(
-                  "Rp ${total.toStringAsFixed(0)}",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[900],
-                    fontSize: 18,
+              ),
+              const SizedBox(height: 10),
+              Card(
+                color: Colors.green[50],
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.green,
+                    child: Icon(Icons.attach_money, color: Colors.white),
+                  ),
+                  title: const Text("Total Pemasukan"),
+                  subtitle: Text(
+                    "Rp ${total.toStringAsFixed(0)}",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green[900],
+                      fontSize: 18,
+                    ),
                   ),
                 ),
               ),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child:
-                  pemasukanList.isEmpty
-                      ? Center(
-                        child: Text(
-                          "Belum ada data pemasukan",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                      : ListView.separated(
-                        itemCount: pemasukanList.length,
-                        separatorBuilder: (_, __) => SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final item = pemasukanList[index];
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 3,
-                            child: ListTile(
-                              contentPadding: EdgeInsets.all(16),
-                              leading: CircleAvatar(
-                                backgroundColor: Colors.green[100],
-                                child: Icon(
-                                  Icons.wallet,
-                                  color: Colors.green[900],
+              const SizedBox(height: 20),
+              Expanded(
+                child:
+                    filteredList.isEmpty
+                        ? const Center(
+                          child: Text(
+                            "Belum ada data pemasukan",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                        : ListView.separated(
+                          itemCount: filteredList.length,
+                          separatorBuilder:
+                              (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final item = filteredList[index];
+                            return Card(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 3,
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.all(16),
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.green[100],
+                                  child: Icon(
+                                    Icons.wallet,
+                                    color: Colors.green[900],
+                                  ),
+                                ),
+                                title: Text(
+                                  item['keterangan'] ?? '',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "Rp ${item['jumlah'].toStringAsFixed(0)}\n${DateFormat('dd MMM yyyy').format(DateTime.parse(item['tanggal']))}",
+                                  style: TextStyle(color: Colors.green[800]),
+                                ),
+                                isThreeLine: true,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        color: Colors.orange,
+                                      ),
+                                      onPressed: () => _showForm(data: item),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed:
+                                          () => hapusPemasukan(item['id']),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              title: Text(
-                                item['keterangan'] ?? '',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text(
-                                "Rp ${item['jumlah'].toStringAsFixed(0)}",
-                                style: TextStyle(color: Colors.green[800]),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.edit,
-                                      color: Colors.orange,
-                                    ),
-                                    onPressed: () => _showForm(data: item),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => hapusPemasukan(item['id']),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-            ),
-          ],
+                            );
+                          },
+                        ),
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Colors.green,
-        icon: Icon(Icons.add),
-        label: Text("Tambah"),
+        icon: const Icon(Icons.add),
+        label: const Text("Tambah"),
         onPressed: () => _showForm(),
       ),
     );

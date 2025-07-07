@@ -1,273 +1,285 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class PengeluaranScreen extends StatefulWidget {
   @override
-  State<PengeluaranScreen> createState() => _PengeluaranScreenState();
+  _PengeluaranScreenState createState() => _PengeluaranScreenState();
 }
 
 class _PengeluaranScreenState extends State<PengeluaranScreen> {
   final supabase = Supabase.instance.client;
-  List<dynamic> pengeluaranList = [];
+  List<Map<String, dynamic>> pengeluaranList = [];
+  String userId = Supabase.instance.client.auth.currentUser?.id ?? '';
+  double totalPengeluaran = 0;
+  String searchKeyword = '';
 
   @override
   void initState() {
     super.initState();
-    fetchData();
+    fetchPengeluaran();
   }
 
-  Future<void> fetchData() async {
-    try {
-      final userId = supabase.auth.currentUser?.id;
-      final response = await supabase
-          .from('pengeluaran')
-          .select()
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
-      setState(() {
-        pengeluaranList = response;
-      });
-    } catch (e) {
-      print('Fetch error: $e');
-    }
-  }
-
-  Future<void> tambahPengeluaran(
-    String keterangan,
-    double jumlah,
-    DateTime tanggal,
-  ) async {
-    final userId = supabase.auth.currentUser?.id;
-    await supabase.from('pengeluaran').insert({
-      'keterangan': keterangan,
-      'jumlah': jumlah,
-      'tanggal': tanggal.toIso8601String(),
-      'created_at': DateTime.now().toIso8601String(),
-      'user_id': userId,
-    });
-    fetchData();
-  }
-
-  Future<void> editPengeluaran(
-    String id,
-    String keterangan,
-    double jumlah,
-    DateTime tanggal,
-  ) async {
-    await supabase
+  Future<void> fetchPengeluaran() async {
+    final response = await supabase
         .from('pengeluaran')
-        .update({
-          'keterangan': keterangan,
-          'jumlah': jumlah,
-          'tanggal': tanggal.toIso8601String(),
-        })
-        .eq('id', id);
-    fetchData();
-  }
+        .select()
+        .eq('user_id', userId)
+        .order('tanggal', ascending: false);
 
-  Future<void> hapusPengeluaran(String id) async {
-    await supabase.from('pengeluaran').delete().eq('id', id);
-    fetchData();
-  }
+    final data = List<Map<String, dynamic>>.from(response);
+    final filtered =
+        data.where((item) {
+          final keterangan = item['keterangan']?.toLowerCase() ?? '';
+          return keterangan.contains(searchKeyword.toLowerCase());
+        }).toList();
 
-  void _showForm({Map<String, dynamic>? data}) {
-    final keteranganController = TextEditingController(
-      text: data?['keterangan'] ?? '',
-    );
-    final jumlahController = TextEditingController(
-      text: data?['jumlah']?.toString() ?? '',
-    );
-    DateTime selectedDate =
-        data?['tanggal'] != null
-            ? DateTime.tryParse(data!['tanggal'].toString()) ?? DateTime.now()
-            : DateTime.now();
-
-    showDialog(
-      context: context,
-      builder: (_) {
-        return StatefulBuilder(
-          builder:
-              (context, setStateDialog) => AlertDialog(
-                title: Text(
-                  data == null ? 'Tambah Pengeluaran' : 'Edit Pengeluaran',
-                ),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: keteranganController,
-                      decoration: InputDecoration(labelText: 'Keterangan'),
-                    ),
-                    TextField(
-                      controller: jumlahController,
-                      decoration: InputDecoration(labelText: 'Jumlah'),
-                      keyboardType: TextInputType.number,
-                    ),
-                    SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Text(DateFormat('dd MMM yyyy').format(selectedDate)),
-                        Spacer(),
-                        IconButton(
-                          icon: Icon(Icons.calendar_today),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: selectedDate,
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setStateDialog(() {
-                                selectedDate = picked;
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('Batal'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      final keterangan = keteranganController.text;
-                      final jumlah =
-                          double.tryParse(jumlahController.text) ?? 0;
-                      if (keterangan.isNotEmpty && jumlah > 0) {
-                        if (data == null) {
-                          tambahPengeluaran(keterangan, jumlah, selectedDate);
-                        } else {
-                          editPengeluaran(
-                            data['id'],
-                            keterangan,
-                            jumlah,
-                            selectedDate,
-                          );
-                        }
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: Text(data == null ? 'Simpan' : 'Update'),
-                  ),
-                ],
-              ),
-        );
-      },
-    );
-  }
-
-  double _hitungTotal() {
-    return pengeluaranList.fold(
+    final total = filtered.fold<double>(
       0,
-      (sum, item) => sum + (item['jumlah'] as num).toDouble(),
+      (sum, item) => sum + (item['jumlah'] ?? 0),
     );
+
+    setState(() {
+      pengeluaranList = filtered;
+      totalPengeluaran = total;
+    });
+  }
+
+  void tambahPengeluaran() async {
+    final TextEditingController keteranganController = TextEditingController();
+    final TextEditingController jumlahController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+
+    await showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('Tambah Pengeluaran'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: keteranganController,
+                  decoration: InputDecoration(labelText: 'Keterangan'),
+                ),
+                TextField(
+                  controller: jumlahController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: 'Jumlah'),
+                ),
+                SizedBox(height: 10),
+                ElevatedButton.icon(
+                  icon: Icon(Icons.calendar_today),
+                  label: Text(DateFormat('dd MMM yyyy').format(selectedDate)),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                child: Text('Batal'),
+                onPressed: () => Navigator.pop(context),
+              ),
+              ElevatedButton(
+                child: Text('Simpan'),
+                onPressed: () async {
+                  await supabase.from('pengeluaran').insert({
+                    'user_id': userId,
+                    'keterangan': keteranganController.text,
+                    'jumlah': int.tryParse(jumlahController.text) ?? 0,
+                    'tanggal': selectedDate.toIso8601String(),
+                  });
+                  Navigator.pop(context);
+                  fetchPengeluaran();
+                },
+              ),
+            ],
+          ),
+    );
+  }
+
+  void editPengeluaran(Map<String, dynamic> data) async {
+    final TextEditingController keteranganController = TextEditingController(
+      text: data['keterangan'],
+    );
+    final TextEditingController jumlahController = TextEditingController(
+      text: data['jumlah'].toString(),
+    );
+    DateTime selectedDate = DateTime.parse(data['tanggal']);
+
+    await showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('Edit Pengeluaran'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: keteranganController,
+                  decoration: InputDecoration(labelText: 'Keterangan'),
+                ),
+                TextField(
+                  controller: jumlahController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: 'Jumlah'),
+                ),
+                SizedBox(height: 10),
+                ElevatedButton.icon(
+                  icon: Icon(Icons.calendar_today),
+                  label: Text(DateFormat('dd MMM yyyy').format(selectedDate)),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                child: Text('Batal'),
+                onPressed: () => Navigator.pop(context),
+              ),
+              ElevatedButton(
+                child: Text('Update'),
+                onPressed: () async {
+                  await supabase
+                      .from('pengeluaran')
+                      .update({
+                        'keterangan': keteranganController.text,
+                        'jumlah': int.tryParse(jumlahController.text) ?? 0,
+                        'tanggal': selectedDate.toIso8601String(),
+                      })
+                      .eq('id', data['id']);
+                  Navigator.pop(context);
+                  fetchPengeluaran();
+                },
+              ),
+            ],
+          ),
+    );
+  }
+
+  void hapusPengeluaran(int id) async {
+    await supabase.from('pengeluaran').delete().eq('id', id);
+    fetchPengeluaran();
   }
 
   @override
   Widget build(BuildContext context) {
-    final total = _hitungTotal();
+    final currency = NumberFormat.currency(
+      locale: 'id',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
 
     return Scaffold(
-      appBar: AppBar(title: Text("Pengeluaran"), backgroundColor: Colors.red),
+      appBar: AppBar(title: Text('Pengeluaran')),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
-            Card(
-              color: Colors.red[50],
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Cari berdasarkan keterangan...',
+                prefixIcon: Icon(Icons.search),
               ),
+              onChanged: (value) {
+                setState(() => searchKeyword = value);
+                fetchPengeluaran();
+              },
+            ),
+            SizedBox(height: 16),
+            Card(
+              color: Colors.red.shade50,
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.red,
-                  child: Icon(Icons.money_off, color: Colors.white),
+                  child: Icon(LucideIcons.wallet, color: Colors.white),
                 ),
-                title: Text("Total Pengeluaran"),
+                title: Text('Total Pengeluaran'),
                 subtitle: Text(
-                  "Rp ${total.toStringAsFixed(0)}",
+                  currency.format(totalPengeluaran),
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red[900],
                     fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
                   ),
                 ),
               ),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 12),
             Expanded(
-              child:
-                  pengeluaranList.isEmpty
-                      ? Center(
-                        child: Text(
-                          "Belum ada data pengeluaran",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                      : ListView.separated(
-                        itemCount: pengeluaranList.length,
-                        separatorBuilder: (_, __) => SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final item = pengeluaranList[index];
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 3,
-                            child: ListTile(
-                              contentPadding: EdgeInsets.all(16),
-                              leading: CircleAvatar(
-                                backgroundColor: Colors.red[100],
-                                child: Icon(
-                                  Icons.wallet,
-                                  color: Colors.red[900],
-                                ),
-                              ),
-                              title: Text(
-                                item['keterangan'] ?? '',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text(
-                                "Rp ${item['jumlah'].toStringAsFixed(0)}",
-                                style: TextStyle(color: Colors.red[800]),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.edit,
-                                      color: Colors.orange,
-                                    ),
-                                    onPressed: () => _showForm(data: item),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed:
-                                        () => hapusPengeluaran(item['id']),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+              child: ListView.builder(
+                itemCount: pengeluaranList.length,
+                itemBuilder: (context, index) {
+                  final item = pengeluaranList[index];
+                  return Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.red.shade100,
+                        child: Icon(LucideIcons.wallet, color: Colors.red),
                       ),
+                      title: Text(item['keterangan']),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            currency.format(item['jumlah']),
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          Text(
+                            DateFormat(
+                              'dd MMM yyyy',
+                            ).format(DateTime.parse(item['tanggal'])),
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.edit, color: Colors.orange),
+                            onPressed: () => editPengeluaran(item),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => hapusPengeluaran(item['id']),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: Colors.red,
-        icon: Icon(Icons.add),
+        onPressed: tambahPengeluaran,
         label: Text("Tambah"),
-        onPressed: () => _showForm(),
+        icon: Icon(Icons.add),
+        backgroundColor: Colors.red,
       ),
     );
   }
