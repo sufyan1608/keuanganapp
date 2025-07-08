@@ -14,7 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   lucide_icons: ^0.257.0
   fl_chart: ^0.66.0
-  intl: ^0.19.0 # digunakan untuk format tanggal
+  intl: ^0.19.0
   supabase_flutter: ^1.10.17
   google_fonts: ^6.1.0
 
@@ -25,3 +25,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/avatar.png

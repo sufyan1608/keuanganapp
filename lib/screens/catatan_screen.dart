@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class CatatanScreen extends StatefulWidget {
   @override
@@ -74,7 +73,7 @@ class _CatatanScreenState extends State<CatatanScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder:
-          (_) => AlertDialog(
+          (context) => AlertDialog(
             title: Text("Hapus Catatan"),
             content: Text("Yakin ingin menghapus catatan ini?"),
             actions: [
@@ -109,7 +108,7 @@ class _CatatanScreenState extends State<CatatanScreen> {
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: DateTime.now(),
     );
     if (picked != null) {
       setState(() {
@@ -128,175 +127,180 @@ class _CatatanScreenState extends State<CatatanScreen> {
         }).toList();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Catatan"),
-        backgroundColor: Colors.teal,
+        title: Text("Catatan Harian"),
+        centerTitle: true,
+        backgroundColor: Colors.teal.shade600,
+        elevation: 0,
       ),
-      backgroundColor: Colors.grey[100],
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Material(
+                elevation: 2,
                 borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 8,
+                child: TextField(
+                  controller: _catatanController,
+                  decoration: InputDecoration(
+                    hintText: 'Tulis catatan...',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                    border: InputBorder.none,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        editingId == null ? Icons.send : Icons.save,
+                        color: Colors.teal,
+                      ),
+                      onPressed: tambahAtauEditCatatan,
+                    ),
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _catatanController,
-                      decoration: InputDecoration(
-                        labelText: 'Tulis catatan...',
-                        border: InputBorder.none,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            editingId == null ? Icons.send : Icons.save,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+                  SizedBox(width: 6),
+                  Text(
+                    DateFormat('dd MMM yyyy').format(selectedDate),
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  Spacer(),
+                  TextButton.icon(
+                    onPressed: _selectDate,
+                    icon: Icon(Icons.edit_calendar, size: 18),
+                    label: Text("Pilih Tanggal"),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Checkbox(
+                    value: showOnlyImportant,
+                    onChanged: (val) {
+                      setState(() => showOnlyImportant = val!);
+                    },
+                  ),
+                  Text("Penting"),
+                  SizedBox(width: 16),
+                  Checkbox(
+                    value: showOnlyIncomplete,
+                    onChanged: (val) {
+                      setState(() => showOnlyIncomplete = val!);
+                    },
+                  ),
+                  Text("Belum Selesai"),
+                ],
+              ),
+              Divider(thickness: 1.2),
+              Expanded(
+                child:
+                    filteredList.isEmpty
+                        ? Center(
+                          child: Text(
+                            "Belum ada catatan",
+                            style: TextStyle(color: Colors.grey),
                           ),
-                          onPressed: tambahAtauEditCatatan,
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today, size: 18),
-                        SizedBox(width: 8),
-                        Text(DateFormat('dd MMM yyyy').format(selectedDate)),
-                        Spacer(),
-                        TextButton(
-                          onPressed: _selectDate,
-                          child: Text("Ubah Tanggal"),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Checkbox(
-                  value: showOnlyImportant,
-                  onChanged: (val) => setState(() => showOnlyImportant = val!),
-                ),
-                Text("Penting"),
-                SizedBox(width: 20),
-                Checkbox(
-                  value: showOnlyIncomplete,
-                  onChanged: (val) => setState(() => showOnlyIncomplete = val!),
-                ),
-                Text("Belum Selesai"),
-              ],
-            ),
-            Divider(),
-            Expanded(
-              child:
-                  filteredList.isEmpty
-                      ? Center(child: Text("Belum ada catatan"))
-                      : ListView.builder(
-                        itemCount: filteredList.length,
-                        itemBuilder: (context, index) {
-                          final item = filteredList[index];
-                          final tanggal = DateTime.parse(item['tanggal']);
-                          return Card(
-                            margin: EdgeInsets.symmetric(vertical: 6),
-                            elevation: 3,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              title: Row(
-                                children: [
-                                  if (item['penting'] == true)
-                                    Icon(
-                                      Icons.star,
-                                      color: Colors.orange,
-                                      size: 18,
-                                    ),
-                                  SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      item['isi'] ?? '',
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                        )
+                        : ListView.builder(
+                          itemCount: filteredList.length,
+                          itemBuilder: (context, index) {
+                            final item = filteredList[index];
+                            final tanggal = DateTime.parse(item['tanggal']);
+                            return Container(
+                              margin: EdgeInsets.symmetric(vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.teal.shade100),
                               ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    DateFormat('dd MMM yyyy').format(tanggal),
-                                    style: TextStyle(color: Colors.grey[600]),
-                                  ),
-                                  Row(
-                                    children: [
-                                      Checkbox(
-                                        value: item['selesai'] ?? false,
-                                        onChanged: (val) async {
-                                          await supabase
-                                              .from('catatan')
-                                              .update({'selesai': val})
-                                              .eq('id', item['id']);
-                                          fetchCatatan();
-                                        },
-                                      ),
-                                      Text(
-                                        item['selesai'] == true
-                                            ? "Selesai"
-                                            : "Belum Selesai",
-                                      ),
-                                      Spacer(),
-                                      TextButton.icon(
-                                        icon: Icon(
-                                          Icons.star,
-                                          color:
-                                              item['penting'] == true
-                                                  ? Colors.orange
-                                                  : Colors.grey,
+                              child: ListTile(
+                                title: Row(
+                                  children: [
+                                    if (item['penting'] == true)
+                                      Icon(Icons.star, color: Colors.orange),
+                                    if (item['penting'] == true)
+                                      SizedBox(width: 6),
+                                    Expanded(child: Text(item['isi'] ?? '')),
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Tanggal: ${DateFormat('dd MMM yyyy').format(tanggal)}",
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Checkbox(
+                                          value: item['selesai'] ?? false,
+                                          onChanged: (val) async {
+                                            await supabase
+                                                .from('catatan')
+                                                .update({'selesai': val})
+                                                .eq('id', item['id']);
+                                            fetchCatatan();
+                                          },
                                         ),
-                                        label: Text("Penting"),
-                                        onPressed: () async {
-                                          await supabase
-                                              .from('catatan')
-                                              .update({
-                                                'penting':
-                                                    !(item['penting'] ?? false),
-                                              })
-                                              .eq('id', item['id']);
-                                          fetchCatatan();
-                                        },
+                                        Text(
+                                          item['selesai'] == true
+                                              ? "Selesai"
+                                              : "Belum Selesai",
+                                        ),
+                                        Spacer(),
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.star,
+                                            color:
+                                                item['penting'] == true
+                                                    ? Colors.orange
+                                                    : Colors.grey,
+                                          ),
+                                          onPressed: () async {
+                                            await supabase
+                                                .from('catatan')
+                                                .update({
+                                                  'penting':
+                                                      !(item['penting'] ??
+                                                          false),
+                                                })
+                                                .eq('id', item['id']);
+                                            fetchCatatan();
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
                                       ),
-                                    ],
-                                  ),
-                                ],
+                                      onPressed: () => mulaiEdit(item),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => hapusCatatan(item['id']),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.edit, color: Colors.blue),
-                                    onPressed: () => mulaiEdit(item),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => hapusCatatan(item['id']),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-            ),
-          ],
+                            );
+                          },
+                        ),
+              ),
+            ],
+          ),
         ),
       ),
     );
