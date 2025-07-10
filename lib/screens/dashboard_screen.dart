@@ -17,6 +17,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final supabase = Supabase.instance.client;
+
   double totalPemasukan = 0;
   double totalPengeluaran = 0;
 
@@ -27,19 +29,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> fetchData() async {
-    final supabase = Supabase.instance.client;
-    try {
-      final userId = supabase.auth.currentUser?.id;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
 
+    try {
       final pemasukanRaw = await supabase
           .from('pemasukan')
           .select('jumlah')
-          .eq('user_id', userId);
+          .eq('user_id', user.id);
 
       final pengeluaranRaw = await supabase
           .from('pengeluaran')
           .select('jumlah')
-          .eq('user_id', userId);
+          .eq('user_id', user.id);
 
       final pemasukanData =
           pemasukanRaw.map((e) => (e['jumlah'] ?? 0) as num).toList();
@@ -51,9 +53,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         totalPengeluaran = pengeluaranData.fold(0, (sum, item) => sum + item);
       });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Gagal memuat data')));
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Gagal memuat data')));
+      }
     }
   }
 
@@ -158,7 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         icon: LucideIcons.clipboardList,
                         label: "Catatan",
                         color: Colors.amber.shade100,
-                        destination: CatatanScreen(),
+                        destination: const CatatanScreen(),
                       ),
                       _buildMenuCard(
                         context,
@@ -244,7 +248,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           context,
           MaterialPageRoute(builder: (_) => destination),
         );
-        fetchData();
+        fetchData(); // Refresh data setelah kembali dari menu lain
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(

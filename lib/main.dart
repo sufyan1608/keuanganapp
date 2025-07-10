@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/login_screen.dart';
+import 'screens/dashboard_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inisialisasi Supabase
+  // ✅ Inisialisasi Supabase tanpa authFlowType
   await Supabase.initialize(
     url: 'https://chmitzjtxvvokcwafqwi.supabase.co',
     anonKey:
@@ -23,8 +24,28 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Pencatatan Keuangan',
-      theme: ThemeData(primarySwatch: Colors.teal),
-      home: LoginScreen(), // Halaman awal
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        useMaterial3: true,
+      ),
+      home: const AuthGate(), // Mengecek apakah sudah login
     );
+  }
+}
+
+/// Mengecek apakah user sudah login
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final session = Supabase.instance.client.auth.currentSession;
+
+    // Jika belum login, arahkan ke LoginScreen
+    if (session == null) {
+      return const LoginScreen();
+    } else {
+      return const DashboardScreen(); // Jika sudah login, arahkan ke dashboard
+    }
   }
 }

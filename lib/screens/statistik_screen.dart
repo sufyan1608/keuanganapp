@@ -11,6 +11,8 @@ class StatistikScreen extends StatefulWidget {
 }
 
 class _StatistikScreenState extends State<StatistikScreen> {
+  final supabase = Supabase.instance.client;
+
   double totalPemasukan = 0;
   double totalPengeluaran = 0;
   DateTimeRange? selectedDateRange;
@@ -22,39 +24,54 @@ class _StatistikScreenState extends State<StatistikScreen> {
   }
 
   Future<void> fetchData() async {
-    final supabase = Supabase.instance.client;
     final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
 
-    var pemasukanQuery = supabase
-        .from('pemasukan')
-        .select('jumlah, tanggal')
-        .eq('user_id', userId);
+    try {
+      final start = selectedDateRange?.start.toIso8601String();
+      final end = selectedDateRange?.end.toIso8601String();
 
-    var pengeluaranQuery = supabase
-        .from('pengeluaran')
-        .select('jumlah, tanggal')
-        .eq('user_id', userId);
+      var pemasukanQuery = supabase
+          .from('pemasukan')
+          .select('jumlah, tanggal')
+          .eq('user_id', userId);
 
-    if (selectedDateRange != null) {
-      final start = selectedDateRange!.start.toIso8601String();
-      final end = selectedDateRange!.end.toIso8601String();
-      pemasukanQuery = pemasukanQuery.gte('tanggal', start).lte('tanggal', end);
-      pengeluaranQuery = pengeluaranQuery
-          .gte('tanggal', start)
-          .lte('tanggal', end);
+      var pengeluaranQuery = supabase
+          .from('pengeluaran')
+          .select('jumlah, tanggal')
+          .eq('user_id', userId);
+
+      if (selectedDateRange != null) {
+        pemasukanQuery = pemasukanQuery
+            .gte('tanggal', start!)
+            .lte('tanggal', end!);
+
+        pengeluaranQuery = pengeluaranQuery
+            .gte('tanggal', start)
+            .lte('tanggal', end);
+      }
+
+      final pemasukanData = await pemasukanQuery;
+      final pengeluaranData = await pengeluaranQuery;
+
+      setState(() {
+        totalPemasukan = pemasukanData.fold(
+          0.0,
+          (sum, item) => sum + (item['jumlah'] as num).toDouble(),
+        );
+        totalPengeluaran = pengeluaranData.fold(
+          0.0,
+          (sum, item) => sum + (item['jumlah'] as num).toDouble(),
+        );
+      });
+    } catch (e) {
+      debugPrint('Fetch error: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Gagal memuat data statistik.")),
+        );
+      }
     }
-
-    final pemasukanData = await pemasukanQuery;
-    final pengeluaranData = await pengeluaranQuery;
-
-    setState(() {
-      totalPemasukan = pemasukanData
-          .map((e) => (e['jumlah'] as num).toDouble())
-          .fold(0, (a, b) => a + b);
-      totalPengeluaran = pengeluaranData
-          .map((e) => (e['jumlah'] as num).toDouble())
-          .fold(0, (a, b) => a + b);
-    });
   }
 
   @override

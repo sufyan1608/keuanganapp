@@ -23,19 +23,26 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
 
   Future<void> fetchData() async {
     try {
-      final userId = supabase.auth.currentUser?.id;
-      final response = await supabase
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final data = await supabase
           .from('pengeluaran')
           .select()
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .order('tanggal', ascending: false);
 
       setState(() {
-        pengeluaranList = response;
+        pengeluaranList = data;
         filteredList = pengeluaranList;
       });
     } catch (e) {
-      print('Fetch error: $e');
+      debugPrint('Fetch error: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Gagal memuat data")));
+      }
     }
   }
 
@@ -44,19 +51,24 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
     double jumlah,
     DateTime tanggal,
   ) async {
-    final userId = supabase.auth.currentUser?.id;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
     await supabase.from('pengeluaran').insert({
       'keterangan': keterangan,
       'jumlah': jumlah,
       'tanggal': tanggal.toIso8601String(),
       'created_at': DateTime.now().toIso8601String(),
-      'user_id': userId,
+      'user_id': user.id,
     });
+
     await fetchData();
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Pengeluaran berhasil ditambahkan")),
-    );
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pengeluaran berhasil ditambahkan")),
+      );
+    }
   }
 
   Future<void> editPengeluaran(
@@ -73,19 +85,24 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
           'tanggal': tanggal.toIso8601String(),
         })
         .eq('id', id);
+
     await fetchData();
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Pengeluaran berhasil diperbarui")),
-    );
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pengeluaran berhasil diperbarui")),
+      );
+    }
   }
 
   Future<void> hapusPengeluaran(String id) async {
     await supabase.from('pengeluaran').delete().eq('id', id);
     await fetchData();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Pengeluaran berhasil dihapus")),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pengeluaran berhasil dihapus")),
+      );
+    }
   }
 
   void _showForm({Map<String, dynamic>? data}) {
@@ -179,6 +196,7 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
                       final keterangan = keteranganController.text;
                       final jumlah =
                           double.tryParse(jumlahController.text) ?? 0;
+
                       if (keterangan.isNotEmpty && jumlah > 0) {
                         if (data == null) {
                           tambahPengeluaran(keterangan, jumlah, selectedDate);
@@ -218,13 +236,10 @@ class _PengeluaranScreenState extends State<PengeluaranScreen> {
   void _filterSearch(String query) {
     setState(() {
       filteredList =
-          pengeluaranList
-              .where(
-                (item) => (item['keterangan'] ?? '').toLowerCase().contains(
-                  query.toLowerCase(),
-                ),
-              )
-              .toList();
+          pengeluaranList.where((item) {
+            final keterangan = item['keterangan'] ?? '';
+            return keterangan.toLowerCase().contains(query.toLowerCase());
+          }).toList();
     });
   }
 

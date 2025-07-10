@@ -23,11 +23,13 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
 
   Future<void> fetchData() async {
     try {
-      final userId = supabase.auth.currentUser?.id;
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
       final response = await supabase
           .from('pemasukan')
           .select()
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .order('tanggal', ascending: false);
 
       setState(() {
@@ -35,7 +37,12 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
         filteredList = pemasukanList;
       });
     } catch (e) {
-      print('Fetch error: $e');
+      debugPrint('Fetch error: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Gagal memuat data")));
+      }
     }
   }
 
@@ -44,19 +51,24 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
     double jumlah,
     DateTime tanggal,
   ) async {
-    final userId = supabase.auth.currentUser?.id;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
     await supabase.from('pemasukan').insert({
       'keterangan': keterangan,
       'jumlah': jumlah,
       'tanggal': tanggal.toIso8601String(),
       'created_at': DateTime.now().toIso8601String(),
-      'user_id': userId,
+      'user_id': user.id,
     });
+
     await fetchData();
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Pemasukan berhasil ditambahkan")),
-    );
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pemasukan berhasil ditambahkan")),
+      );
+    }
   }
 
   Future<void> editPemasukan(
@@ -73,19 +85,25 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
           'tanggal': tanggal.toIso8601String(),
         })
         .eq('id', id);
+
     await fetchData();
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Pemasukan berhasil diperbarui")),
-    );
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pemasukan berhasil diperbarui")),
+      );
+    }
   }
 
   Future<void> hapusPemasukan(String id) async {
     await supabase.from('pemasukan').delete().eq('id', id);
     await fetchData();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Pemasukan berhasil dihapus")));
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pemasukan berhasil dihapus")),
+      );
+    }
   }
 
   void _showForm({Map<String, dynamic>? data}) {
@@ -104,7 +122,7 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder:
@@ -120,7 +138,10 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
               children: [
                 Text(
                   data == null ? 'Tambah Pemasukan' : 'Edit Pemasukan',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -146,10 +167,10 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 20),
+                    const Icon(Icons.calendar_today, size: 20),
                     const SizedBox(width: 8),
                     Text(DateFormat('dd MMM yyyy').format(selectedDate)),
-                    Spacer(),
+                    const Spacer(),
                     TextButton(
                       onPressed: () async {
                         final picked = await showDatePicker(
@@ -176,6 +197,7 @@ class _PemasukanScreenState extends State<PemasukanScreen> {
                       final keterangan = keteranganController.text;
                       final jumlah =
                           double.tryParse(jumlahController.text) ?? 0;
+
                       if (keterangan.isNotEmpty && jumlah > 0) {
                         if (data == null) {
                           tambahPemasukan(keterangan, jumlah, selectedDate);
