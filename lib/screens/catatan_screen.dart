@@ -51,7 +51,7 @@ class _CatatanScreenState extends State<CatatanScreen> {
         await supabase
             .from('catatan')
             .update({'isi': isi, 'tanggal': selectedDate.toIso8601String()})
-            .eq('id', editingId);
+            .eq('id', editingId!); // ✅ diperbaiki hanya di sini
 
         editingId = null;
       }
@@ -133,45 +133,44 @@ class _CatatanScreenState extends State<CatatanScreen> {
             const SizedBox(height: 20),
             const Divider(),
             Expanded(
-              child:
-                  _catatanList.isEmpty
-                      ? const Center(child: Text('Belum ada catatan.'))
-                      : ListView.builder(
-                        itemCount: _catatanList.length,
-                        itemBuilder: (context, index) {
-                          final item = _catatanList[index];
-                          return Card(
-                            elevation: 2,
-                            child: ListTile(
-                              title: Text(item['isi'] ?? ''),
-                              subtitle: Text(
-                                DateFormat(
-                                  'dd MMM yyyy',
-                                ).format(DateTime.parse(item['tanggal'])),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.edit,
-                                      color: Colors.orange,
-                                    ),
-                                    onPressed: () => _editCatatan(item),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                    ),
-                                    onPressed: () => _hapusCatatan(item['id']),
-                                  ),
-                                ],
+              child: _catatanList.isEmpty
+                  ? const Center(child: Text('Belum ada catatan.'))
+                  : ListView.builder(
+                      itemCount: _catatanList.length,
+                      itemBuilder: (context, index) {
+                        final item = _catatanList[index];
+                        return Card(
+                          elevation: 2,
+                          child: ListTile(
+                            title: Text(item['isi'] ?? ''),
+                            subtitle: Text(
+                              DateFormat('dd MMM yyyy').format(
+                                DateTime.parse(item['tanggal']),
                               ),
                             ),
-                          );
-                        },
-                      ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.orange,
+                                  ),
+                                  onPressed: () => _editCatatan(item),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () => _hapusCatatan(item['id']),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
